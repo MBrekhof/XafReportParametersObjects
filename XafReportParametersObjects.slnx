@@ -1,0 +1,10 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="EasyTest" />
+    <BuildType Name="Release" />
+  </Configurations>
+  <Project Path="XafReportParametersObjects/XafReportParametersObjects.Blazor.Server/XafReportParametersObjects.Blazor.Server.csproj" />
+  <Project Path="XafReportParametersObjects/XafReportParametersObjects.Module/XafReportParametersObjects.Module.csproj" />
+  <Project Path="XafReportParametersObjects/XafReportParametersObjects.Win/XafReportParametersObjects.Win.csproj" />
+</Solution>
