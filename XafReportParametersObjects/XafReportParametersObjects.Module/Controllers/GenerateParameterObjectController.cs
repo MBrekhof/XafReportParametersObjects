@@ -72,8 +72,13 @@ public class GenerateParameterObjectController : ViewController<DetailView>
             definition.IsStale = false;
             definition.ParameterSignatureHash = result.SignatureHash;
 
-            // Update field metadata
-            definition.Fields.Clear();
+            // Update field metadata - can't use Clear() with EF Core change tracking
+            while (definition.Fields.Count > 0)
+            {
+                var field = definition.Fields[0];
+                definition.Fields.Remove(field);
+                View.ObjectSpace.Delete(field);
+            }
 
             foreach (var param in result.Parameters)
             {
