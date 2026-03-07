@@ -10,6 +10,8 @@ using DevExpress.ExpressApp.ReportsV2;
 using DevExpress.ExpressApp.Updating;
 using DevExpress.Persistent.Base;
 using System.ComponentModel;
+using XafReportParametersObjects.Module.BusinessObjects;
+using XafReportParametersObjects.Module.Reports;
 
 namespace XafReportParametersObjects.Module
 {
@@ -34,7 +36,9 @@ namespace XafReportParametersObjects.Module
         public override IEnumerable<ModuleUpdater> GetModuleUpdaters(IObjectSpace objectSpace, Version versionFromDB)
         {
             ModuleUpdater updater = new DatabaseUpdate.Updater(objectSpace, versionFromDB);
-            return new ModuleUpdater[] { updater };
+            var predefinedReportsUpdater = new PredefinedReportsUpdater(Application, objectSpace, versionFromDB);
+            predefinedReportsUpdater.AddPredefinedReport<OrdersReport>("Orders Report", typeof(Order));
+            return new ModuleUpdater[] { updater, predefinedReportsUpdater };
         }
         public override void Setup(XafApplication application)
         {
