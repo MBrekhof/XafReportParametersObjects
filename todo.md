@@ -2,17 +2,26 @@
 
 ## Current Sprint
 
-- [ ] Research `ReportParametersObjectBase` API and patterns
-- [ ] Create sample business object(s) for report data
-- [ ] Create a custom `ReportParametersObjectBase` implementation
-- [ ] Create an XtraReport that uses the parameter object
-- [ ] Register the report and parameter object
-- [ ] Test parameter UI and report generation
+- [ ] Create a sample XtraReport with parameters (string, DateTime, Customer lookup) for end-to-end testing
+- [ ] Run the app and test the full Generate -> Associate -> Restart -> Use flow
+- [ ] Test graduation flow (Generate -> Graduate -> copy source -> compile)
+- [ ] Test stale detection (modify report params, verify IsStale flag)
 
 ## Completed
 
-(none yet)
+- [x] Research `ReportParametersObjectBase` API and patterns
+- [x] Create sample business objects (Customer, Order) with seed data
+- [x] Create metadata entities (ReportParameterDefinition, ReportParameterFieldDefinition)
+- [x] Create ReportParameterInspector service
+- [x] Create ReportParameterSourceGenerator service
+- [x] Create ReportParameterCompiler (Roslyn) service
+- [x] Create ReportParameterGraduationService
+- [x] Create GenerateParameterObjectController with Generate and Graduate actions
+- [x] Create ReportParameterStaleDetectionController
 
 ## Notes
 
-(none yet)
+- `FieldSize` attribute is XPO-only; use `StringLength` for EF Core
+- `CollectionDataSource.ObjectTypeName` is a string, not a Type - use `Type.GetType()` to resolve
+- `IReportStorage` is the DI service for loading reports: `serviceProvider.GetRequiredService<IReportStorage>()`
+- Process restart required after generating parameter objects (XAF TypesInfo is process-static)

@@ -3,24 +3,35 @@
 ## Last Session
 
 **Date:** 2026-03-07
-**Status:** Project initialized
+**Status:** Core implementation complete, needs end-to-end testing
 
 ### What was done
-- Created CLAUDE.md with project conventions and workflow rules
-- Created todo.md and session_handoff.md for session tracking
-- Reviewed project structure: .NET 8 XAF app with EF Core, DevExpress 25.2.3
-- ReportsV2 module is already registered in the shared module
-- DbContext already has `ReportDataV2` DbSet
+- Explored wlncentral (Hangfire scheduled reports) and XafDynamicAssemblies (Roslyn pipeline)
+- Designed the dynamic ReportParametersObjectBase generation system
+- Created design doc: `docs/plans/2026-03-07-dynamic-report-parameters-design.md`
+- Created implementation plan: `docs/plans/2026-03-07-dynamic-report-parameters-implementation.md`
+- Implemented all core components:
+  - **Business Objects:** Customer, Order (with seed data)
+  - **Metadata:** ReportParameterDefinition, ReportParameterFieldDefinition, ReportParameterStatus enum
+  - **Services:** ReportParameterInspector, ReportParameterSourceGenerator, ReportParameterCompiler, ReportParameterGraduationService
+  - **Controllers:** GenerateParameterObjectController (Generate + Graduate actions), ReportParameterStaleDetectionController
+- Created GitHub repo: https://github.com/MBrekhof/XafReportParametersObjects
 
 ### Current state
-- Fresh XAF project scaffold with Blazor Server + WinForms
-- No business objects created yet (only default FileData)
-- No report parameter objects or reports created yet
+- Solution builds cleanly (0 errors, only CS8632 nullable warnings)
+- All services and controllers are in the Module project
+- No sample XtraReport exists yet - need one to test end-to-end
+- EF Core uses StringLength instead of FieldSize (XPO-only attribute)
 
 ### What to do next
-- Start implementing ReportParametersObjectBase functionality
-- Create sample domain objects to report on
-- Build a custom parameter object and associated report
+1. Create a sample XtraReport with parameters (string filter, date range, Customer lookup)
+2. Run the app, create a ReportParameterDefinition, link it to the report
+3. Test the "Generate Parameter Object" action end-to-end
+4. Test graduation flow
+5. Test stale detection
+6. Consider: adding nullable enable to the project to clean up CS8632 warnings
 
 ### Blockers / Open Questions
-- None
+- Need to verify that `XafTypesInfo.RegisterEntity()` works for non-persistent `[DomainComponent]` types loaded from a dynamic assembly
+- Need to verify `IReportStorage` is available via DI in the Blazor Server context
+- The Roslyn compiler references all loaded assemblies; may need to add explicit references if types aren't loaded yet
