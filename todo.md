@@ -2,7 +2,7 @@
 
 ## Current Sprint
 
-- [ ] Create a sample XtraReport with parameters (string, DateTime, Customer lookup) for end-to-end testing
+- [x] Create a sample XtraReport with parameters (string, DateTime, decimal) registered via PredefinedReportsUpdater
 - [ ] Run the app and test the full Generate -> Associate -> Restart -> Use flow
 - [ ] Test graduation flow (Generate -> Graduate -> copy source -> compile)
 - [ ] Test stale detection (modify report params, verify IsStale flag)
