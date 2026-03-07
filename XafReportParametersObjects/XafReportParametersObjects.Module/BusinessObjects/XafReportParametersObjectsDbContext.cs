@@ -17,6 +17,10 @@ namespace XafReportParametersObjects.Module.BusinessObjects
         //public DbSet<ModuleInfo> ModulesInfo { get; set; }
         public DbSet<FileData> FileData { get; set; }
         public DbSet<ReportDataV2> ReportDataV2 { get; set; }
+        public DbSet<ReportParameterDefinition> ReportParameterDefinitions { get; set; }
+        public DbSet<ReportParameterFieldDefinition> ReportParameterFieldDefinitions { get; set; }
+        public DbSet<Customer> Customers { get; set; }
+        public DbSet<Order> Orders { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
