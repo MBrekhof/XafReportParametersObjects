@@ -4,7 +4,9 @@ using DevExpress.ExpressApp.ReportsV2;
 using DevExpress.Persistent.Base;
 using DevExpress.Persistent.BaseImpl.EF;
 using DevExpress.XtraReports.UI;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System.Text;
 using XafReportParametersObjects.Module.BusinessObjects;
 using XafReportParametersObjects.Module.Services;
 
@@ -13,7 +15,6 @@ namespace XafReportParametersObjects.Module.Controllers;
 public class GenerateParameterObjectController : ViewController<DetailView>
 {
     private readonly SimpleAction _generateAction;
-    private readonly SimpleAction _graduateAction;
 
     public GenerateParameterObjectController()
     {
@@ -22,18 +23,10 @@ public class GenerateParameterObjectController : ViewController<DetailView>
         _generateAction = new SimpleAction(this, "GenerateParameterObject", PredefinedCategory.Edit)
         {
             Caption = "Generate Parameter Object",
-            ToolTip = "Inspect the linked report and generate a ReportParametersObjectBase subclass",
+            ToolTip = "Inspect the linked report and generate a ReportParametersObjectBase source file",
             ImageName = "Action_Reload"
         };
         _generateAction.Execute += GenerateAction_Execute;
-
-        _graduateAction = new SimpleAction(this, "GraduateParameterObject", PredefinedCategory.Edit)
-        {
-            Caption = "Graduate",
-            ToolTip = "Generate compilable C# source for this parameter object",
-            ImageName = "Action_Export"
-        };
-        _graduateAction.Execute += GraduateAction_Execute;
     }
 
     private void GenerateAction_Execute(object sender, SimpleActionExecuteEventArgs e)
@@ -64,34 +57,20 @@ public class GenerateParameterObjectController : ViewController<DetailView>
 
             if (result.Parameters.Count == 0)
             {
-                Application.ShowViewStrategy.ShowMessage("The report has no visible parameters.");
+                Application.ShowViewStrategy.ShowMessage("The report has no parameters.");
                 return;
             }
 
-            // Clear stale flag since we're regenerating
+            // Update metadata
             definition.IsStale = false;
             definition.ParameterSignatureHash = result.SignatureHash;
 
-            // Update field metadata - can't use Clear() with EF Core change tracking
+            // Clear existing field metadata
             while (definition.Fields.Count > 0)
             {
                 var field = definition.Fields[0];
                 definition.Fields.Remove(field);
                 View.ObjectSpace.Delete(field);
-            }
-
-            foreach (var param in result.Parameters)
-            {
-                var field = View.ObjectSpace.CreateObject<ReportParameterFieldDefinition>();
-                field.ParameterName = param.Name;
-                field.PropertyName = param.PropertyName;
-                field.ClrTypeName = param.ClrType.FullName ?? "System.String";
-                field.ReferencedTypeName = param.ReferencedTypeName;
-                field.IsRequired = false;
-                field.DefaultValue = param.DefaultValue?.ToString();
-                field.IncludeInCriteria = true;
-                field.CriteriaPropertyPath = param.IsLookup ? $"{param.PropertyName}.ID" : param.PropertyName;
-                definition.Fields.Add(field);
             }
 
             // Determine the report's data source business object type
@@ -104,46 +83,50 @@ public class GenerateParameterObjectController : ViewController<DetailView>
                     boType = resolved;
             }
 
+            foreach (var param in result.Parameters)
+            {
+                var field = View.ObjectSpace.CreateObject<ReportParameterFieldDefinition>();
+                field.ParameterName = param.Name;
+                field.PropertyName = param.PropertyName;
+                field.ClrTypeName = param.ClrType.FullName ?? "System.String";
+                field.ReferencedTypeName = param.ReferencedTypeName;
+                field.IsRequired = false;
+                field.DefaultValue = param.DefaultValue?.ToString();
+                field.IncludeInCriteria = true;
+                definition.Fields.Add(field);
+            }
+
+            // Hide the report's own parameters so the viewer doesn't show
+            // its built-in parameter panel (XAF's detail view handles the UI)
+            HideReportParameters(reportStorage, definition.Report);
+
             // Generate C# source
             var source = ReportParameterSourceGenerator.Generate(
                 definition.GeneratedClassName,
-                result.Parameters,
+                definition.Fields,
                 boType);
 
-            // Compile via Roslyn
-            var compiler = new ReportParameterCompiler();
-            var compilationResult = compiler.Compile(source, $"ReportParams_{definition.GeneratedClassName}");
-
-            if (!compilationResult.Success)
+            // Write source file: check appsettings.json override first, then auto-detect
+            var outputDir = ResolveOutputDirectory();
+            if (outputDir is null)
             {
-                var errors = string.Join("\n", compilationResult.Errors);
-                Application.ShowViewStrategy.ShowMessage($"Compilation failed:\n{errors}");
+                Application.ShowViewStrategy.ShowMessage(
+                    "Could not determine output directory for generated source.\n" +
+                    "Set 'ReportParameters:OutputDirectory' in appsettings.json, " +
+                    "or ensure the app runs from a build output under the solution tree.");
                 return;
             }
-
-            // Get the generated type
-            var fullTypeName = ReportParameterSourceGenerator.GetFullTypeName(definition.GeneratedClassName);
-            var generatedType = compiler.GetGeneratedType(fullTypeName);
-
-            if (generatedType is null)
-            {
-                Application.ShowViewStrategy.ShowMessage($"Type '{fullTypeName}' not found in compiled assembly.");
-                return;
-            }
-
-            // Register with XAF TypesInfo
-            XafTypesInfo.Instance.RegisterEntity(generatedType);
-
-            // Associate with report
-            definition.Report.ParametersObjectType = generatedType;
-
-            definition.Status = ReportParameterStatus.Runtime;
+            Directory.CreateDirectory(outputDir);
+            var outputPath = Path.Combine(outputDir, $"{definition.GeneratedClassName}.cs");
+            File.WriteAllText(outputPath, source, Encoding.UTF8);
+            var fullPath = Path.GetFullPath(outputPath);
 
             View.ObjectSpace.CommitChanges();
 
             Application.ShowViewStrategy.ShowMessage(
-                $"Generated '{definition.GeneratedClassName}' with {result.Parameters.Count} parameters. " +
-                "Restart the application to fully activate the parameter object.");
+                $"Generated '{definition.GeneratedClassName}' with {result.Parameters.Count} parameters.\n" +
+                $"Source file: {fullPath}\n" +
+                "Rebuild the application to activate the parameter object.");
         }
         finally
         {
@@ -151,22 +134,90 @@ public class GenerateParameterObjectController : ViewController<DetailView>
         }
     }
 
-    private void GraduateAction_Execute(object sender, SimpleActionExecuteEventArgs e)
+    /// <summary>
+    /// Resolves the output directory for generated source files.
+    /// Priority: appsettings.json "ReportParameters:OutputDirectory" > auto-detect Module project.
+    /// </summary>
+    private string? ResolveOutputDirectory()
     {
-        var definition = (ReportParameterDefinition)View.CurrentObject;
-
-        if (definition.Fields.Count == 0)
+        // 1. Check appsettings.json override
+        var config = Application.ServiceProvider.GetService<IConfiguration>();
+        var configuredPath = config?["ReportParameters:OutputDirectory"];
+        if (!string.IsNullOrWhiteSpace(configuredPath))
         {
-            Application.ShowViewStrategy.ShowMessage("No fields defined. Generate the parameter object first.");
-            return;
+            var resolved = Path.GetFullPath(configuredPath);
+            return resolved;
         }
 
-        definition.GeneratedSource = ReportParameterGraduationService.GenerateGraduationSource(definition);
-        definition.Status = ReportParameterStatus.Graduating;
-        View.ObjectSpace.CommitChanges();
+        // 2. Auto-detect: walk up from build output to find the Module project
+        var moduleDir = FindModuleProjectDirectory();
+        if (moduleDir is not null)
+            return Path.Combine(moduleDir, "GeneratedParameters");
 
-        Application.ShowViewStrategy.ShowMessage(
-            "Graduation source generated. Copy the source from 'GeneratedSource' field " +
-            "into your Module project and set Status to 'Compiled' after building.");
+        return null;
+    }
+
+    /// <summary>
+    /// Walks up from the build output directory to find the Module project folder
+    /// by looking for its .csproj file.
+    /// </summary>
+    /// <summary>
+    /// Hides all XtraReport parameters so the report viewer doesn't show its own
+    /// parameter panel. The XAF ReportParametersObjectBase detail view handles the UI.
+    /// </summary>
+    private static void HideReportParameters(IReportStorage reportStorage, DevExpress.Persistent.BaseImpl.EF.ReportDataV2 reportData)
+    {
+        DevExpress.XtraReports.UI.XtraReport? rpt = null;
+        try
+        {
+            rpt = reportStorage.LoadReport(reportData);
+            var modified = false;
+
+            foreach (var param in rpt.Parameters.Cast<DevExpress.XtraReports.Parameters.Parameter>())
+            {
+                if (param.Visible)
+                {
+                    param.Visible = false;
+                    modified = true;
+                }
+            }
+
+            if (modified)
+            {
+                reportStorage.SaveReport(
+                    (DevExpress.ExpressApp.ReportsV2.IReportDataV2Writable)reportData, rpt);
+            }
+        }
+        finally
+        {
+            rpt?.Dispose();
+        }
+    }
+
+    private static string? FindModuleProjectDirectory()
+    {
+        var dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
+
+        for (var i = 0; i < 10 && dir is not null; i++, dir = dir.Parent)
+        {
+            var candidates = new[]
+            {
+                Path.Combine(dir.FullName, "XafReportParametersObjects.Module"),
+                dir.GetDirectories("*.Module", SearchOption.TopDirectoryOnly)
+                    .FirstOrDefault()?.FullName
+            };
+
+            foreach (var candidate in candidates)
+            {
+                if (candidate is null) continue;
+                if (Directory.Exists(candidate) &&
+                    Directory.GetFiles(candidate, "*.csproj").Length > 0)
+                {
+                    return candidate;
+                }
+            }
+        }
+
+        return null;
     }
 }

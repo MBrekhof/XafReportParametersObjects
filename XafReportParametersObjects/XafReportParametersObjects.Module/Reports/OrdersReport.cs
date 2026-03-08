@@ -24,7 +24,7 @@ public class OrdersReport : XtraReport
             Description = "Customer Name",
             Type = typeof(string),
             Value = "",
-            Visible = true
+            Visible = false
         };
 
         var startDateParam = new Parameter
@@ -33,7 +33,7 @@ public class OrdersReport : XtraReport
             Description = "Start Date",
             Type = typeof(DateTime),
             Value = DateTime.Today.AddMonths(-3),
-            Visible = true
+            Visible = false
         };
 
         var minAmountParam = new Parameter
@@ -42,10 +42,14 @@ public class OrdersReport : XtraReport
             Description = "Minimum Amount",
             Type = typeof(decimal),
             Value = 0m,
-            Visible = true
+            Visible = false
         };
 
         Parameters.AddRange(new[] { customerNameParam, startDateParam, minAmountParam });
+
+        // Don't set FilterString — filtering is handled by GetCriteria() on the
+        // ReportParametersObjectBase subclass, which returns a CriteriaOperator
+        // applied to the CollectionDataSource.
 
         // Report layout
         Bands.Add(new TopMarginBand { HeightF = 20 });

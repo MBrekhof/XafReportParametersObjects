@@ -1,11 +1,27 @@
 # Todo
 
-## Current Sprint
+## Current State
 
-- [x] Create a sample XtraReport with parameters (string, DateTime, decimal) registered via PredefinedReportsUpdater
-- [ ] Run the app and test the full Generate -> Associate -> Restart -> Use flow
-- [ ] Test graduation flow (Generate -> Graduate -> copy source -> compile)
-- [ ] Test stale detection (modify report params, verify IsStale flag)
+Solution builds cleanly. Orders Report with `OrdersReportParameters` works on Blazor:
+- XAF detail view shows before report preview
+- User fills in parameters (CustomerName, StartDate, MinAmount)
+- `GetCriteria()` builds `CriteriaOperator` from user input
+- Report data is filtered correctly
+
+### Architecture
+- **Generate action** writes `.cs` source file to disk (no runtime Roslyn compilation)
+- Developer rebuilds the app to activate the generated parameter object
+- `ReportParametersObjectBase.GetCriteria()` handles filtering (works on both Blazor and WinForms)
+- XtraReport parameters must be `Visible = false` (Generate action does this automatically)
+- `?paramName` substitution does NOT work with `ReportParametersObjectBase` — use `GetCriteria()` instead
+
+## Remaining Tasks
+
+- [ ] Test the "Generate" action end-to-end (create a new report with parameters, generate, rebuild, verify)
+- [ ] Test with WinForms platform
+- [ ] Add a Customer lookup parameter to test lookup generation
+- [ ] Consider Hangfire integration (serialize parameter values, apply at scheduled execution time)
+- [ ] Push to GitHub
 
 ## Completed
 
@@ -14,14 +30,13 @@
 - [x] Create metadata entities (ReportParameterDefinition, ReportParameterFieldDefinition)
 - [x] Create ReportParameterInspector service
 - [x] Create ReportParameterSourceGenerator service
-- [x] Create ReportParameterCompiler (Roslyn) service
-- [x] Create ReportParameterGraduationService
-- [x] Create GenerateParameterObjectController with Generate and Graduate actions
-- [x] Create ReportParameterStaleDetectionController
-
-## Notes
-
-- `FieldSize` attribute is XPO-only; use `StringLength` for EF Core
-- `CollectionDataSource.ObjectTypeName` is a string, not a Type - use `Type.GetType()` to resolve
-- `IReportStorage` is the DI service for loading reports: `serviceProvider.GetRequiredService<IReportStorage>()`
-- Process restart required after generating parameter objects (XAF TypesInfo is process-static)
+- [x] Create GenerateParameterObjectController with Generate action
+- [x] Create sample XtraReport (OrdersReport) with parameters
+- [x] Create hand-coded OrdersReportParameters with GetCriteria()
+- [x] Simplify from runtime Roslyn compilation to compile-time source generation
+- [x] Delete runtime compilation infrastructure (5 files, 4 NuGet packages)
+- [x] Clean up Module.cs and Startup.cs (Blazor + Win)
+- [x] Fix report filtering (root cause: Visible=true on XtraReport parameters)
+- [x] Add HideReportParameters() to Generate action
+- [x] Add smart output directory detection + appsettings.json override
+- [x] DevExpress ReportsV2 source code analysis — documented findings in memory

@@ -6,6 +6,7 @@ using DevExpress.Persistent.Base;
 using DevExpress.Persistent.BaseImpl.EF;
 using Microsoft.Extensions.DependencyInjection;
 using XafReportParametersObjects.Module.BusinessObjects;
+using XafReportParametersObjects.Module.Reports;
 
 namespace XafReportParametersObjects.Module.DatabaseUpdate
 {
@@ -53,6 +54,15 @@ namespace XafReportParametersObjects.Module.DatabaseUpdate
                 order3.Customer = acme;
                 order3.Description = "Spare parts";
 
+                ObjectSpace.CommitChanges();
+            }
+
+            // Ensure the predefined report is associated with the hardcoded parameters object
+            // even if the report row already existed before this spike.
+            var ordersReport = ObjectSpace.FirstOrDefault<ReportDataV2>(r => r.DisplayName == "Orders Report");
+            if (ordersReport is not null && ordersReport.ParametersObjectType != typeof(OrdersReportParameters))
+            {
+                ordersReport.ParametersObjectType = typeof(OrdersReportParameters);
                 ObjectSpace.CommitChanges();
             }
         }

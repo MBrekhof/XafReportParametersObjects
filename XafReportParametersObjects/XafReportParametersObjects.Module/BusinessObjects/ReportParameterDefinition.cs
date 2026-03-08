@@ -16,10 +16,7 @@ public class ReportParameterDefinition : BaseObject
     [StringLength(200)]
     public virtual string GeneratedClassName { get; set; } = string.Empty;
 
-    [Browsable(false)]
-    public virtual string GeneratedSource { get; set; }
-
-    public virtual ReportParameterStatus Status { get; set; } = ReportParameterStatus.Runtime;
+    public virtual ReportParameterStatus Status { get; set; } = ReportParameterStatus.Draft;
 
     [StringLength(100)]
     [Browsable(false)]

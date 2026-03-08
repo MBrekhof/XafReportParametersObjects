@@ -31,7 +31,9 @@ public static class ReportParameterInspector
 
         foreach (var param in report.Parameters.Cast<DevExpress.XtraReports.Parameters.Parameter>())
         {
-            if (!param.Visible) continue;
+            // Inspect all parameters, not just visible ones.
+            // Parameters should be Visible=false to prevent the report viewer
+            // from showing its own parameter panel (XAF handles the UI instead).
 
             var clrType = param.Type ?? typeof(string);
             var isLookup = IsBusinessObjectType(clrType);
