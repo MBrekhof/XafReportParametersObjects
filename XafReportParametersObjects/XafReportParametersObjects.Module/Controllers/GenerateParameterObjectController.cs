@@ -63,7 +63,13 @@ public class GenerateParameterObjectController : ViewController<DetailView>
 
             // Update metadata
             definition.IsStale = false;
+            definition.Status = ReportParameterStatus.Generated;
             definition.ParameterSignatureHash = result.SignatureHash;
+
+            // Preserve user customizations across regeneration (matched by parameter name)
+            var oldSettings = definition.Fields.ToDictionary(
+                f => f.ParameterName,
+                f => (f.IncludeInCriteria, f.CriteriaPropertyPath));
 
             // Clear existing field metadata
             while (definition.Fields.Count > 0)
@@ -90,15 +96,24 @@ public class GenerateParameterObjectController : ViewController<DetailView>
                 field.PropertyName = param.PropertyName;
                 field.ClrTypeName = param.ClrType.FullName ?? "System.String";
                 field.ReferencedTypeName = param.ReferencedTypeName;
-                field.IsRequired = false;
                 field.DefaultValue = param.DefaultValue?.ToString();
                 field.IncludeInCriteria = true;
+                field.CriteriaPropertyPath =
+                    ReportParameterSourceGenerator.ResolveCriteriaPath(param.PropertyName, boType);
+
+                if (oldSettings.TryGetValue(param.Name, out var old))
+                {
+                    field.IncludeInCriteria = old.IncludeInCriteria;
+                    if (!string.IsNullOrWhiteSpace(old.CriteriaPropertyPath))
+                        field.CriteriaPropertyPath = old.CriteriaPropertyPath;
+                }
+
                 definition.Fields.Add(field);
             }
 
             // Hide the report's own parameters so the viewer doesn't show
             // its built-in parameter panel (XAF's detail view handles the UI)
-            HideReportParameters(reportStorage, definition.Report);
+            HideReportParameters(reportStorage, definition.Report, report);
 
             // Generate C# source
             var source = ReportParameterSourceGenerator.Generate(
@@ -158,42 +173,33 @@ public class GenerateParameterObjectController : ViewController<DetailView>
     }
 
     /// <summary>
-    /// Walks up from the build output directory to find the Module project folder
-    /// by looking for its .csproj file.
-    /// </summary>
-    /// <summary>
     /// Hides all XtraReport parameters so the report viewer doesn't show its own
     /// parameter panel. The XAF ReportParametersObjectBase detail view handles the UI.
     /// </summary>
-    private static void HideReportParameters(IReportStorage reportStorage, DevExpress.Persistent.BaseImpl.EF.ReportDataV2 reportData)
+    private static void HideReportParameters(IReportStorage reportStorage, ReportDataV2 reportData, XtraReport report)
     {
-        DevExpress.XtraReports.UI.XtraReport? rpt = null;
-        try
+        var modified = false;
+
+        foreach (var param in report.Parameters.Cast<DevExpress.XtraReports.Parameters.Parameter>())
         {
-            rpt = reportStorage.LoadReport(reportData);
-            var modified = false;
-
-            foreach (var param in rpt.Parameters.Cast<DevExpress.XtraReports.Parameters.Parameter>())
+            if (param.Visible)
             {
-                if (param.Visible)
-                {
-                    param.Visible = false;
-                    modified = true;
-                }
-            }
-
-            if (modified)
-            {
-                reportStorage.SaveReport(
-                    (DevExpress.ExpressApp.ReportsV2.IReportDataV2Writable)reportData, rpt);
+                param.Visible = false;
+                modified = true;
             }
         }
-        finally
+
+        if (modified)
         {
-            rpt?.Dispose();
+            reportStorage.SaveReport(
+                (DevExpress.ExpressApp.ReportsV2.IReportDataV2Writable)reportData, report);
         }
     }
 
+    /// <summary>
+    /// Walks up from the build output directory to find the Module project folder
+    /// by looking for its .csproj file.
+    /// </summary>
     private static string? FindModuleProjectDirectory()
     {
         var dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);

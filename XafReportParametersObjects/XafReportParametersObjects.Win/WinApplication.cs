@@ -34,7 +34,7 @@ namespace XafReportParametersObjects.Win
         }
         void XafReportParametersObjectsWindowsFormsApplication_DatabaseVersionMismatch(object sender, DevExpress.ExpressApp.DatabaseVersionMismatchEventArgs e)
         {
-#if EASYTEST
+#if EASYTEST || DEBUG
             e.Updater.Update();
             e.Handled = true;
 #else

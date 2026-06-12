@@ -60,7 +60,9 @@ namespace XafReportParametersObjects.Win
             {
                 application.ConnectionString = connectionString;
 #if DEBUG
-                if(System.Diagnostics.Debugger.IsAttached && application.CheckCompatibilityType == CheckCompatibilityType.DatabaseSchema) {
+                // Always update in DEBUG (not only under a debugger): the module updater
+                // links generated parameter objects to reports on startup.
+                if(application.CheckCompatibilityType == CheckCompatibilityType.DatabaseSchema) {
                     application.DatabaseUpdateMode = DatabaseUpdateMode.UpdateDatabaseAlways;
                 }
 #endif

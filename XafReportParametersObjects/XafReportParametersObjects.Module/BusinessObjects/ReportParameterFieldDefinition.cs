@@ -21,9 +21,6 @@ public class ReportParameterFieldDefinition : BaseObject
     [StringLength(200)]
     public virtual string ReferencedTypeName { get; set; }
 
-    [DefaultValue(false)]
-    public virtual bool IsRequired { get; set; }
-
     [StringLength(500)]
     public virtual string DefaultValue { get; set; }
 

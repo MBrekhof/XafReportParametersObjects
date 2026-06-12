@@ -22,14 +22,18 @@ namespace XafReportParametersObjects.Blazor.Server
             base.OnSetupStarted();
 
 #if DEBUG
-            if(System.Diagnostics.Debugger.IsAttached && CheckCompatibilityType == CheckCompatibilityType.DatabaseSchema) {
+            // Always update in DEBUG (not only under a debugger): the module updater
+            // links generated parameter objects to reports on startup, and dev runs
+            // via `dotnet run` must pick that up too.
+            if (CheckCompatibilityType == CheckCompatibilityType.DatabaseSchema)
+            {
                 DatabaseUpdateMode = DatabaseUpdateMode.UpdateDatabaseAlways;
             }
 #endif
         }
         void XafReportParametersObjectsBlazorApplication_DatabaseVersionMismatch(object sender, DatabaseVersionMismatchEventArgs e)
         {
-#if EASYTEST
+#if EASYTEST || DEBUG
             e.Updater.Update();
             e.Handled = true;
 #else

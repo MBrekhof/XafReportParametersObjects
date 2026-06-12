@@ -37,9 +37,11 @@ public class ReportParameterStaleDetectionController : ViewController<DetailView
             var wasStale = definition.IsStale;
             definition.IsStale = result.SignatureHash != definition.ParameterSignatureHash;
 
+            // No CommitChanges here: committing inside OnActivated would also commit
+            // any pending user edits. The flag persists with the user's next save;
+            // the warning message is the real payload.
             if (definition.IsStale && !wasStale)
             {
-                View.ObjectSpace.CommitChanges();
                 Application.ShowViewStrategy.ShowMessage(
                     "Warning: The report's parameters have changed since the parameter object was generated. " +
                     "Click 'Generate Parameter Object' to regenerate.");

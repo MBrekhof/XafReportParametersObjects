@@ -65,6 +65,37 @@ namespace XafReportParametersObjects.Module.DatabaseUpdate
                 ordersReport.ParametersObjectType = typeof(OrdersReportParameters);
                 ObjectSpace.CommitChanges();
             }
+
+            LinkGeneratedParameterObjects();
+        }
+
+        // The Generate action writes a .cs file but can't link the type to the report —
+        // the type only exists after the developer rebuilds. This closes the loop on
+        // every startup: resolve each generated class by name and attach it.
+        private void LinkGeneratedParameterObjects()
+        {
+            var linked = false;
+            foreach (var definition in ObjectSpace.GetObjects<ReportParameterDefinition>())
+            {
+                if (definition.Report is null || definition.Status != ReportParameterStatus.Generated)
+                    continue;
+
+                // Predefined reports declare their parameters object in code
+                // (PredefinedReportsUpdater owns those rows and recreates them when
+                // their metadata is changed). Only link user-created reports.
+                if (!string.IsNullOrEmpty(definition.Report.PredefinedReportTypeName))
+                    continue;
+
+                var parametersType = Type.GetType(
+                    Services.ReportParameterSourceGenerator.GetFullTypeName(definition.GeneratedClassName));
+                if (parametersType is not null && definition.Report.ParametersObjectType != parametersType)
+                {
+                    definition.Report.ParametersObjectType = parametersType;
+                    linked = true;
+                }
+            }
+            if (linked)
+                ObjectSpace.CommitChanges();
         }
         public override void UpdateDatabaseBeforeUpdateSchema()
         {

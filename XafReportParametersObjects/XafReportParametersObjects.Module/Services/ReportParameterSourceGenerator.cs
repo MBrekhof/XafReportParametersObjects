@@ -14,22 +14,6 @@ public static class ReportParameterSourceGenerator
         Type ClrType,
         string? CriteriaPath);
 
-    public static string Generate(string className, List<ParameterInfo> parameters, Type reportDataSourceType)
-    {
-        var fields = parameters.Select(param =>
-        {
-            var propertyName = SanitizePropertyName(param.PropertyName, param.Name);
-            return new GeneratedField(
-                PropertyName: propertyName,
-                TypeName: param.IsLookup ? param.ClrType.FullName! : GetSimpleTypeName(param.ClrType),
-                IsLookup: param.IsLookup,
-                ClrType: param.ClrType,
-                CriteriaPath: ResolveCriteriaPath(propertyName, reportDataSourceType));
-        }).ToList();
-
-        return GenerateCore(className, fields, reportDataSourceType);
-    }
-
     public static string Generate(string className, IEnumerable<ReportParameterFieldDefinition> fieldDefinitions, Type reportDataSourceType)
     {
         var fields = fieldDefinitions.Select(field =>
@@ -41,12 +25,21 @@ public static class ReportParameterSourceGenerator
                 : GetSimpleTypeName(field.ClrTypeName);
             var propertyName = SanitizePropertyName(field.PropertyName, field.ParameterName);
 
+            // User-specified path wins; convention-based resolution is the fallback.
+            string? criteriaPath = null;
+            if (field.IncludeInCriteria)
+            {
+                criteriaPath = !string.IsNullOrWhiteSpace(field.CriteriaPropertyPath)
+                    ? field.CriteriaPropertyPath
+                    : ResolveCriteriaPath(propertyName, reportDataSourceType);
+            }
+
             return new GeneratedField(
                 PropertyName: propertyName,
                 TypeName: typeName,
                 IsLookup: isLookup,
                 ClrType: clrType,
-                CriteriaPath: ResolveCriteriaPath(propertyName, reportDataSourceType));
+                CriteriaPath: criteriaPath);
         }).ToList();
 
         return GenerateCore(className, fields, reportDataSourceType);
@@ -166,7 +159,7 @@ public static class ReportParameterSourceGenerator
         sb.AppendLine();
     }
 
-    private static string? ResolveCriteriaPath(string propertyName, Type reportDataSourceType)
+    public static string? ResolveCriteriaPath(string propertyName, Type reportDataSourceType)
     {
         if (reportDataSourceType == typeof(object)) return null;
 

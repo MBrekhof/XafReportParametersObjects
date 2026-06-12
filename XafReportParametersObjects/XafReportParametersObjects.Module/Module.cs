@@ -32,10 +32,5 @@ namespace XafReportParametersObjects.Module
                 typeof(OrdersReportParameters));
             return new ModuleUpdater[] { updater, predefinedReportsUpdater };
         }
-
-        public override void Setup(XafApplication application)
-        {
-            base.Setup(application);
-        }
     }
 }
