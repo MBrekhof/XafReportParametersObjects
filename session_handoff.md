@@ -3,65 +3,55 @@
 ## Last Session
 
 **Date:** 2026-06-12
-**Status:** WORKING — Generate workflow verified end-to-end on Blazor
+**Status:** WORKING — Generate workflow verified end-to-end on **both platforms** (Blazor scripted, WinForms manual). Repo is **public**: https://github.com/MBrekhof/XafReportParametersObjects
 
-### What was done
+## What was accomplished
 
-1. **Full code review** of the source-generation refactor → `code-review-2026-06-12.md` (findings + statuses).
-2. **Fixed the critical gap**: generated parameter objects were never linked to their reports.
-   - New `Updater.LinkGeneratedParameterObjects()`: on startup, resolves each Generated definition's class by name and sets `Report.ParametersObjectType`. Skips predefined reports (see gotcha below).
+This session took the project from "filtering works on Blazor with a hand-coded class" to a complete, tested, documented, published workflow.
+
+1. **Full code review** of the source-generation refactor → `code-review-2026-06-12.md` (11 findings, statuses annotated at the top of the file). All but two deliberate skips were fixed.
+2. **Closed the critical gap** — generated classes were never linked to their reports:
+   - `Updater.LinkGeneratedParameterObjects()` resolves each Generated definition's class by name at startup and sets `Report.ParametersObjectType`. Skips predefined reports.
    - Generate action now sets `Status = Generated`.
-3. **Metadata is now honored by the generator**: `IncludeInCriteria` excludes fields, `CriteriaPropertyPath` overrides convention-based path resolution. The controller writes the inferred path back into the grid, and user edits survive regeneration (merged by `ParameterName`).
-4. Smaller fixes: stale-detection controller no longer commits the user's ObjectSpace in `OnActivated`; Generate loads the report once (was twice); removed dead `IsRequired`, empty `Setup()` override, unused packages (`EFCore.InMemory`, `IdentityModel.Tokens.Jwt`), 3 junk generated test files.
-5. **DEBUG builds now auto-update the DB schema without an attached debugger** (BlazorApplication.cs, WinApplication.cs, Win/Startup.cs). Required for the startup linking to work when running via `dotnet run`.
-6. **End-to-end test passed on Blazor** (headless, Playwright): created definition → linked report → Generate → fixed `StartDate` path to `OrderDate` via the grid → regenerate (custom path preserved) → rebuild → restart → Updater auto-linked → parameter dialog appeared → CustomerName="Acme Corp" + MinAmount=1000 → preview showed exactly ORD-001.
+3. **Field metadata is real now**: generator honors `IncludeInCriteria` and `CriteriaPropertyPath`; the controller writes inferred paths back into the grid; user edits survive regeneration (merged by `ParameterName`).
+4. **Dev-workflow fix**: DEBUG builds auto-update the DB schema without an attached debugger (BlazorApplication.cs, WinApplication.cs, Win/Startup.cs). Required for `dotnet run` workflows and the startup linking.
+5. **Smaller fixes**: stale-detection no longer commits the user's ObjectSpace; single report load in Generate; removed dead `IsRequired`, empty `Setup()`, unused packages, junk generated files.
+6. **Committed E2E test**: `XafReportParametersObjects.E2ETests` — C# console runner (Microsoft.Playwright, headless Chromium). `dotnet run --project XafReportParametersObjects\XafReportParametersObjects.E2ETests` runs the entire workflow including the mid-test rebuild; exit 0/1. Verified passing from a clean state.
+7. **WinForms platform test passed** (manual): app starts headless, generated parameter dialog appears, filtering correct (only ORD-001 with Acme Corp + min 1000).
+8. **Published**: comprehensive `README.md` (why/where-to-use, architecture, how-to, gotchas, testing); 7 commits pushed; repo made public.
 
-### Key gotchas discovered (also added to xaf-reporting skill)
+## Current state
 
-1. **Generated parameter objects must target user-created reports, not predefined ones.**
-   `PredefinedReportsUpdater` reconciles its registrations on every DB update (via `ReportDataComparer`). If you change a predefined report's `ParametersObjectType`, the row is treated as orphaned/hidden and a new canonical row is created → duplicate "Orders Report" rows. The Updater linking therefore skips reports with a non-empty `PredefinedReportTypeName`. Use **Copy Predefined Report** in the reports list to get a user-owned copy first.
-2. **The XAF template only auto-updates the DB schema when a debugger is attached.** Running `dotnet run` headless after a model change throws DatabaseVersionMismatch. Fixed by auto-updating in `#if DEBUG` regardless of debugger.
-3. **`[DomainComponent]` classes in the module assembly are auto-collected** — generated classes work without `AdditionalExportedTypes` (verified empirically: the generated dialog appeared without any registration). The explicit `AdditionalExportedTypes.Add(typeof(OrdersReportParameters))` in Module.cs is redundant.
-4. Convention-based criteria path resolution has no Start/End rule (`StartDate` ↛ `OrderDate`). The editable `CriteriaPropertyPath` covers this; a convention could be added later.
+- Solution builds clean (0 errors; pre-existing CS8632/CA1416 warnings only).
+- DB (LocalDB `XafReportParametersObjects`): predefined "Orders Report" (hand-coded params, owned by PredefinedReportsUpdater), "Orders Report (User Copy)" → `GeneratedOrdersParameters`, "Orders Report (E2E)" → `E2ETestParameters` (recreated by every E2E run).
+- `GeneratedParameters/`: `GeneratedOrdersParameters.cs` (committed demo artifact), `E2ETestParameters.cs` (gitignored, test artifact).
+- Everything committed and pushed; working tree clean.
 
-### Environment notes
+## Key gotchas (also in the global xaf-reporting skill + memory/xaf-patterns.md)
 
-- LocalDB database had to be **re-attached** (`CREATE DATABASE ... FOR ATTACH` of `C:\Users\marti\XafReportParametersObjects.mdf`) — the instance had lost it since March.
-- DB now contains: predefined "Orders Report" (hand-coded params) + "Orders Report (User Copy)" (→ `GeneratedOrdersParameters`), one definition `GeneratedOrdersParameters` with 3 fields.
-- `GeneratedParameters/GeneratedOrdersParameters.cs` is the live generated artifact (untracked, like the folder).
+1. **Predefined reports own their `ParametersObjectType`.** Reassigning it makes `PredefinedReportsUpdater` hide the row and create a duplicate. Generated parameter objects target user-created reports only (use "Copy Predefined Report" first).
+2. **`?paramName` FilterString substitution doesn't work** with `ReportParametersObjectBase` — use `GetCriteria()`.
+3. **All XtraReport parameters must be `Visible = false`** or the viewer shows its own panel (Generate enforces this).
+4. **`[DomainComponent]` module-assembly types are auto-collected** — no `AdditionalExportedTypes` needed (the explicit add of `OrdersReportParameters` in Module.cs is redundant; removal is a pending todo).
+5. **Template only auto-updates schema under a debugger** — fixed for DEBUG builds in this repo.
+6. **Playwright vs Blazor/XAF**: `FillAsync` doesn't trigger Blazor binding (use `PressSequentiallyAsync`); the Blazor report viewer renders pages as bitmap `<img>` (assert via CSV export); the DX WinForms grid exposes nothing via UI Automation (no scripted WinForms E2E possible without extra work).
 
-### Added later same session (committed + pushed, repo now public)
+## Environment notes
 
-- `README.md` — comprehensive, includes how-to and gotchas
-- **`XafReportParametersObjects.E2ETests`** — committed Playwright .NET console runner
-  (`dotnet run --project XafReportParametersObjects.E2ETests`, exit 0/1). Owns the app
-  process so it can rebuild mid-test. Asserts: generated file content, user-edit
-  preservation, startup auto-link (SQL), and filtering via **CSV export** of the preview
-  — the Blazor report viewer renders pages as bitmap `<img>`, no DOM text. Blazor inputs
-  need `PressSequentiallyAsync` (FillAsync doesn't raise input events).
-  Verified: full run passes (`=== E2E PASSED ===`).
-- `E2ETestParameters.cs` is gitignored (regenerated every test run).
+- LocalDB had lost the database; it was re-attached with `CREATE DATABASE [XafReportParametersObjects] ON (FILENAME='C:\Users\marti\XafReportParametersObjects.mdf'),(FILENAME='...log.ldf') FOR ATTACH`. If "Cannot create file ... .mdf because it already exists" appears again, that's the fix.
+- E2E runner uses port 5100 (dev runs use 5000); Playwright Chromium already installed in `%LOCALAPPDATA%\ms-playwright`.
 
-### WinForms platform test — PASSED (same session)
+## What to do next
 
-Launched `XafReportParametersObjects.Win.exe` (no debugger): schema auto-update ran cleanly,
-selected "Orders Report (E2E)" → Execute Report → the **generated** parameter dialog appeared
-(Start Date empty = generated class, no ctor default) → Acme Corp + Min Amount 1000 →
-Print Preview showed exactly ORD-001. Driven via screenshots + coordinate clicks/SendKeys —
-note: the DevExpress WinForms grid exposes **nothing** via UI Automation by default
-(FindAll on DataItem/ListItem/Text returns 0), so no scripted WinForms E2E; manual/visual only.
+- [ ] **Customer lookup parameter end-to-end** — add a `Customer`-typed parameter to a report, verify the generated lookup property + `Customer.ID = ?` criteria (generation code exists, never exercised)
+- [ ] Generator: emit `DefaultValue` metadata as property initializers (dialog currently opens with empty StartDate)
+- [ ] Generator: optional Start/End date convention (`StartDate` → nearest date property)
+- [ ] Remove redundant `AdditionalExportedTypes.Add(typeof(OrdersReportParameters))` from Module.cs (verified safe, just not done)
+- [ ] Hangfire integration exploration (serialize parameter values, apply at scheduled execution)
+- [ ] Optional: GitHub Actions CI — build + (if a SQL instance is feasible) the E2E runner
 
-### What to do next
+## Open questions / honest gaps
 
-- [x] ~~Commit the changes~~ — committed and pushed (40f620f, e4519f2, e99f5db); repo public
-- [x] ~~WinForms platform test~~ — passed (see above)
-- [ ] WinForms platform test (compiles; not run)
-- [ ] Customer lookup parameter end-to-end (lookup generation path untested)
-- [ ] Generator improvements: emit `DefaultValue` metadata as property defaults; optional Start/End date convention
-- [ ] Hangfire integration exploration
-- [ ] Push to GitHub
-
-### Open questions / honest gaps
-
-- Stale-detection behavior change (#4) compiles but the stale path wasn't re-tested behaviorally.
-- `ResolveClrType` silently falls back to `string` for exotic types (noted in review #11, deliberately not fixed).
+- Stale-detection change (no more CommitChanges in OnActivated) compiles + builds but the stale path wasn't behaviorally re-tested.
+- `ResolveClrType` silently falls back to `string` for exotic non-lookup types (review finding #11, deliberately left).
+- E2E runner mutates the dev database by design (pre-cleans its own artifacts at start; failures leave evidence).
