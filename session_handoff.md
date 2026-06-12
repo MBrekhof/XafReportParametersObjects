@@ -30,9 +30,21 @@
 - DB now contains: predefined "Orders Report" (hand-coded params) + "Orders Report (User Copy)" (→ `GeneratedOrdersParameters`), one definition `GeneratedOrdersParameters` with 3 fields.
 - `GeneratedParameters/GeneratedOrdersParameters.cs` is the live generated artifact (untracked, like the folder).
 
+### Added later same session (committed + pushed, repo now public)
+
+- `README.md` — comprehensive, includes how-to and gotchas
+- **`XafReportParametersObjects.E2ETests`** — committed Playwright .NET console runner
+  (`dotnet run --project XafReportParametersObjects.E2ETests`, exit 0/1). Owns the app
+  process so it can rebuild mid-test. Asserts: generated file content, user-edit
+  preservation, startup auto-link (SQL), and filtering via **CSV export** of the preview
+  — the Blazor report viewer renders pages as bitmap `<img>`, no DOM text. Blazor inputs
+  need `PressSequentiallyAsync` (FillAsync doesn't raise input events).
+  Verified: full run passes (`=== E2E PASSED ===`).
+- `E2ETestParameters.cs` is gitignored (regenerated every test run).
+
 ### What to do next
 
-- [ ] Commit the changes (10 modified files + GeneratedParameters/ + review doc — all uncommitted)
+- [x] ~~Commit the changes~~ — committed and pushed (40f620f, e4519f2, e99f5db); repo public
 - [ ] WinForms platform test (compiles; not run)
 - [ ] Customer lookup parameter end-to-end (lookup generation path untested)
 - [ ] Generator improvements: emit `DefaultValue` metadata as property defaults; optional Start/End date convention

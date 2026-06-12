@@ -48,3 +48,4 @@ The Generate workflow is **verified end-to-end on Blazor** (2026-06-12):
 - [x] Single report load in Generate action; misc cleanup (dead IsRequired, empty Setup, unused packages, junk generated files)
 - [x] DEBUG builds auto-update DB schema without attached debugger (Blazor + Win)
 - [x] **End-to-end test on Blazor — PASSED** (generate → rebuild → auto-link → dialog → filtered preview)
+- [x] **Committed E2E runner**: `XafReportParametersObjects.E2ETests` (C# console + Playwright .NET, `dotnet run` = full workflow incl. mid-test rebuild, CSV-export assert)
