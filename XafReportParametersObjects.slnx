@@ -4,6 +4,11 @@
     <BuildType Name="EasyTest" />
     <BuildType Name="Release" />
   </Configurations>
+  <Folder Name="/XafReportParametersObjects/">
+    <Project Path="XafReportParametersObjects/XafReportParametersObjects.E2ETests/XafReportParametersObjects.E2ETests.csproj">
+      <BuildType Solution="EasyTest|*" Project="Debug" />
+    </Project>
+  </Folder>
   <Project Path="XafReportParametersObjects/XafReportParametersObjects.Blazor.Server/XafReportParametersObjects.Blazor.Server.csproj" />
   <Project Path="XafReportParametersObjects/XafReportParametersObjects.Module/XafReportParametersObjects.Module.csproj" />
   <Project Path="XafReportParametersObjects/XafReportParametersObjects.Win/XafReportParametersObjects.Win.csproj" />

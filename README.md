@@ -126,9 +126,30 @@ Non-persistent `[DomainComponent]` classes declared inside an XAF module assembl
 
 ## Testing
 
-The end-to-end workflow was verified with **Playwright** driving the Blazor Server app headlessly (Chromium): create definition → Generate → edit criteria path in the grid → regenerate (edits preserved) → rebuild → restart → auto-link → run report → assert the parameter dialog appears and the preview contains exactly the rows matching the entered criteria (customer + minimum amount), with non-matching seed rows absent.
+The repo ships a committed end-to-end test: **`XafReportParametersObjects.E2ETests`**, a C# console runner using **Playwright for .NET** (`Microsoft.Playwright`, headless Chromium). One-time setup, then one command:
 
-This catches what unit tests can't: the interplay of the XAF application model, the Blazor report viewer, the parameter dialog, and the actual SQL filtering. If you change the generator or the linking logic, re-run that flow — *build passing is not the same as the dialog appearing*. There is no committed test script yet (the flow needs an app restart mid-test); automating it with Playwright + a `dotnet build` step between phases is a good next contribution.
+```powershell
+dotnet build XafReportParametersObjects\XafReportParametersObjects.E2ETests
+# one-time: install the Playwright browser
+powershell -ExecutionPolicy Bypass -File XafReportParametersObjects\XafReportParametersObjects.E2ETests\bin\Debug\net8.0\playwright.ps1 install chromium
+
+dotnet run --project XafReportParametersObjects\XafReportParametersObjects.E2ETests
+```
+
+It exercises the **entire** workflow — including the rebuild in the middle, which is why it's a console runner that owns the app process rather than an xUnit suite against a fixed server:
+
+1. Pre-clean previous test artifacts (DB rows + generated file), build, start the Blazor app on port 5100
+2. Copy the predefined report (UI), create a `ReportParameterDefinition`, click Generate, assert the emitted `.cs`
+3. Edit `Criteria Property Path` → `OrderDate` in the grid, regenerate, assert the user edit was honored **and preserved**
+4. Stop the app, `dotnet build` (the generated class compiles in), restart
+5. Assert via SQL that the startup updater linked `ParametersObjectType` to the generated class
+6. Run the report through the XAF parameter dialog (customer + minimum amount), **export the preview to CSV** and assert it contains exactly the matching seed row (`ORD-001`) and not the excluded ones
+
+Exit code 0 = pass, 1 = fail (CI-friendly). It needs the LocalDB instance and mutates the dev database (test rows are cleaned up at the start of each run, so failures leave evidence).
+
+Two Playwright lessons baked into the script: Blazor's data binding ignores `FillAsync` (no input events), so text entry uses `PressSequentiallyAsync`; and the XAF Blazor report viewer renders pages as **bitmap `<img>` elements** — there is no report text in the DOM, so the filtering assertion exports the document to CSV and checks the file instead.
+
+This catches what unit tests can't: the interplay of the XAF application model, the Blazor report viewer, the parameter dialog, and the actual SQL filtering. If you change the generator or the linking logic, re-run it — *build passing is not the same as the dialog appearing*.
 
 ## Known Limitations / Roadmap
 
