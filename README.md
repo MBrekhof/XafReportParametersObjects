@@ -11,6 +11,21 @@ A DevExpress **XAF** (eXpressApp Framework) solution exploring [`ReportParameter
 | Platforms | Blazor Server + WinForms |
 | Reporting | `DevExpress.ExpressApp.ReportsV2` |
 
+## Why / Where Would You Use This?
+
+**Use it when reports outlive your sprint planning.** In a typical XAF line-of-business app, reports accumulate: finance wants an orders-per-customer report this month, logistics wants shipments-by-region next month. Each one needs a parameters dialog (date range, customer, minimum amount, …), and in stock XAF that means a developer hand-writes a `ReportParametersObjectBase` class per report. This project turns that into: an admin clicks **Generate** on the report, a developer reviews one generated file in the next release branch, done. The criteria logic is plain compiled C# — debuggable, diffable in code review, no reflection or runtime magic.
+
+Concrete scenarios where this pattern pays off:
+
+- **Power users design reports at runtime** (XAF's end-user report designer) and each report needs a clean parameters dialog instead of the report viewer's raw parameter panel — with criteria actually applied at the data-source level (SQL), not after loading everything.
+- **Many similar filtered reports** over the same domain — the convention-based criteria mapping (`CustomerName` → `Customer.Name = ?`, `MinAmount` → `Amount >= ?`) eliminates copy-paste classes.
+- **Scheduled/background report execution** (e.g. Hangfire) where parameter values must be captured as a typed object and replayed later — a compiled parameters class serializes cleanly; dialog input boxes don't.
+- **You inherited reports with `?paramName` FilterStrings that mysteriously don't filter** — that substitution silently doesn't work with `ReportParametersObjectBase` (see [Gotchas](#key-xaf-findings-the-hard-won-stuff)); this repo shows the working `GetCriteria()` route end-to-end.
+
+Even if you never adopt the generator, the repo is useful as a **reference implementation**: a verified, minimal example of `ReportParametersObjectBase` on Blazor + WinForms, plus the four gotchas that cost real debugging hours, plus a Playwright E2E harness for XAF Blazor apps.
+
+**When *not* to use it:** a handful of static reports whose parameters never change — just hand-write the parameter classes (see `Reports/OrdersReportParameters.cs` for the template) and skip the metadata machinery. And it's a spike, not a product: no security trimming, no multi-tenancy, rough edges documented below.
+
 ## The Problem
 
 XAF ReportsV2 lets you show a parameters dialog before a report executes, but you must hand-write a `ReportParametersObjectBase` subclass per report: properties, `GetCriteria()`, `CreateObjectSpace()`, and wire it to the report. For apps where power users create reports at runtime, that's a developer round-trip for every report.
