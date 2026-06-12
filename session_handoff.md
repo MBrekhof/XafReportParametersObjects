@@ -42,9 +42,19 @@
   Verified: full run passes (`=== E2E PASSED ===`).
 - `E2ETestParameters.cs` is gitignored (regenerated every test run).
 
+### WinForms platform test — PASSED (same session)
+
+Launched `XafReportParametersObjects.Win.exe` (no debugger): schema auto-update ran cleanly,
+selected "Orders Report (E2E)" → Execute Report → the **generated** parameter dialog appeared
+(Start Date empty = generated class, no ctor default) → Acme Corp + Min Amount 1000 →
+Print Preview showed exactly ORD-001. Driven via screenshots + coordinate clicks/SendKeys —
+note: the DevExpress WinForms grid exposes **nothing** via UI Automation by default
+(FindAll on DataItem/ListItem/Text returns 0), so no scripted WinForms E2E; manual/visual only.
+
 ### What to do next
 
 - [x] ~~Commit the changes~~ — committed and pushed (40f620f, e4519f2, e99f5db); repo public
+- [x] ~~WinForms platform test~~ — passed (see above)
 - [ ] WinForms platform test (compiles; not run)
 - [ ] Customer lookup parameter end-to-end (lookup generation path untested)
 - [ ] Generator improvements: emit `DefaultValue` metadata as property defaults; optional Start/End date convention

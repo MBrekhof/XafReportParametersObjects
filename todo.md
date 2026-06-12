@@ -19,7 +19,6 @@ The Generate workflow is **verified end-to-end on Blazor** (2026-06-12):
 
 ## Remaining Tasks
 
-- [ ] Test with WinForms platform (compiles, not yet run)
 - [ ] Add a Customer lookup parameter to test lookup generation
 - [ ] Generator: emit property defaults from `DefaultValue` metadata (currently ignored; generated DateTime properties start empty)
 - [ ] Generator: consider Start/End date convention (`StartDate` → nearest date property) — today the user fixes it via `CriteriaPropertyPath`, which works
@@ -49,3 +48,4 @@ The Generate workflow is **verified end-to-end on Blazor** (2026-06-12):
 - [x] DEBUG builds auto-update DB schema without attached debugger (Blazor + Win)
 - [x] **End-to-end test on Blazor — PASSED** (generate → rebuild → auto-link → dialog → filtered preview)
 - [x] **Committed E2E runner**: `XafReportParametersObjects.E2ETests` (C# console + Playwright .NET, `dotnet run` = full workflow incl. mid-test rebuild, CSV-export assert)
+- [x] **WinForms platform test — PASSED** (manual UIA/screenshot-driven: headless-DEBUG schema update OK, generated params dialog shows, GetCriteria filters → only ORD-001)

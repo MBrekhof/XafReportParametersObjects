@@ -168,7 +168,7 @@ This catches what unit tests can't: the interplay of the XAF application model, 
 
 ## Known Limitations / Roadmap
 
-- WinForms compiles but the workflow hasn't been exercised there yet
+- WinForms is verified manually (generated parameter dialog + filtering work); there is no scripted WinForms E2E — the DevExpress WinForms grid exposes nothing via UI Automation by default, so the committed E2E runner covers Blazor only
 - Lookup (business-object) parameter generation is implemented but untested end-to-end
 - `DefaultValue` metadata is captured but not emitted as property initializers
 - No `StartXxx`/`EndXxx` date convention in the path resolver (workaround: edit the path in the grid)
