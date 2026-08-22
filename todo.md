@@ -2,7 +2,7 @@
 
 ## Current State
 
-The Generate workflow is **verified end-to-end on Blazor** (2026-06-12):
+The Generate workflow is **verified end-to-end on Blazor** (2026-06-12; lookup parameters 2026-08-22):
 1. Create a `ReportParameterDefinition`, link a **user-created** report, click Generate
 2. `.cs` file written to `GeneratedParameters/`, Status → Generated, criteria paths inferred and editable per field
 3. Rebuild → on next startup the Updater links `Report.ParametersObjectType` to the generated class automatically
@@ -19,14 +19,15 @@ The Generate workflow is **verified end-to-end on Blazor** (2026-06-12):
 
 ## Remaining Tasks
 
-- [ ] Add a Customer lookup parameter to test lookup generation
-- [ ] Generator: emit property defaults from `DefaultValue` metadata (currently ignored; generated DateTime properties start empty)
+- [ ] Generator: emit property defaults from `DefaultValue` metadata (currently ignored; generated DateTime properties start empty). **Open design question:** the sample default is `DateTime.Today.AddMonths(-3)` — a relative value; emitting the inspected snapshot as a literal bakes in a stale date. Decide snapshot vs. skip-DateTime before implementing.
 - [ ] Generator: consider Start/End date convention (`StartDate` → nearest date property) — today the user fixes it via `CriteriaPropertyPath`, which works
-- [ ] Consider removing redundant `AdditionalExportedTypes.Add(typeof(OrdersReportParameters))` (confirmed: `[DomainComponent]` types in the module assembly are auto-collected — generated classes work without it)
 - [ ] Consider Hangfire integration (serialize parameter values, apply at scheduled execution time)
-- [ ] Push to GitHub
+- [ ] Push `fe07b8f` (lookup feature) to GitHub
 
 ## Completed
+
+- [x] **Customer lookup parameter end-to-end — PASSED** (2026-08-22, `fe07b8f`): `SelectedCustomer` (Type=Customer) on OrdersReport → generated `Customer? SelectedCustomer` + `Customer.ID = ?`; path resolved by the new type-match convention; E2E filters via the lookup combobox
+- [x] Removed redundant `AdditionalExportedTypes.Add(typeof(OrdersReportParameters))`
 
 - [x] Research `ReportParametersObjectBase` API and patterns
 - [x] Create sample business objects (Customer, Order) with seed data
