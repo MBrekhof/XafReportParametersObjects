@@ -10,8 +10,9 @@ using Microsoft.Playwright;
 //   emitted .cs file. Then the app is stopped and the solution rebuilt so the
 //   generated class compiles in.
 // Phase 2 (browser): restart, assert the Updater linked the generated type to the
-//   report, run the report with criteria and assert the preview shows exactly the
-//   matching seed row (ORD-001) and not the excluded ones (ORD-002, ORD-003).
+//   report, run the report with criteria (Customer lookup + MinAmount) and assert the
+//   preview shows exactly the matching seed row (ORD-001) and not the excluded ones
+//   (ORD-002 by Customer.ID, ORD-003 by Amount).
 
 const string BaseUrl = "http://localhost:5100";
 const string ClassName = "E2ETestParameters";
@@ -83,6 +84,8 @@ try
         Assert(File.Exists(generatedFile), $"generated file exists: {generatedFile}");
         var source = File.ReadAllText(generatedFile);
         Assert(source.Contains("Customer.Name = ?"), "criteria path Customer.Name inferred");
+        Assert(source.Contains("Customer? SelectedCustomer { get; set; }"), "SelectedCustomer emitted as a Customer lookup property");
+        Assert(source.Contains("\"Customer.ID = ?\", SelectedCustomer.ID"), "lookup criteria path Customer resolved by property type");
         Assert(!source.Contains("OrderDate"), "StartDate has no criteria yet (no Start/End convention)");
 
         Step("Set CriteriaPropertyPath = OrderDate on the StartDate field");
@@ -136,9 +139,9 @@ try
 
         Step("Run the report: parameter dialog, criteria, preview");
         await page.GetByText(ReportName).First.DblClickAsync();
-        var customerBox = page.GetByRole(AriaRole.Textbox, new() { Name = "Customer Name" });
-        await customerBox.ClickAsync();
-        await customerBox.PressSequentiallyAsync("Acme Corp");
+        // Customer Name stays empty: the lookup is the only customer criterion in play.
+        await page.GetByRole(AriaRole.Combobox, new() { Name = "Selected Customer" }).ClickAsync();
+        await page.GetByText("Acme Corp", new() { Exact = true }).ClickAsync();
         var minAmount = page.GetByRole(AriaRole.Spinbutton, new() { Name = "Min Amount" });
         await minAmount.ClickAsync();
         await page.Keyboard.PressAsync("Control+a");
@@ -161,7 +164,7 @@ try
         File.Delete(csvPath);
         Console.WriteLine($"    exported CSV:\n{csv.Trim().ReplaceLineEndings("\n    ")}");
         Assert(csv.Contains("ORD-001"), "ORD-001 (Acme Corp, 1500) present");
-        Assert(!csv.Contains("ORD-002"), "ORD-002 (Globex) filtered out by Customer.Name");
+        Assert(!csv.Contains("ORD-002"), "ORD-002 (Globex) filtered out by Customer.ID lookup");
         Assert(!csv.Contains("ORD-003"), "ORD-003 (750 < 1000) filtered out by Amount");
 
         await page.CloseAsync();

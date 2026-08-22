@@ -58,7 +58,7 @@ The generator maps parameter names to criteria properties by convention, all ove
 | `MaxAmount` (numeric) | `Amount <= ?` | |
 | `OrderDate` (exact match) | `OrderDate >= ?` (DateTime) / `= ?` | case-insensitive exact property match |
 | `StartDate` | *(unresolved)* | no Start/End convention (yet) — set `Criteria Property Path` to `OrderDate` in the grid |
-| Customer (lookup) | `Customer.ID = ?` | business-object typed parameters |
+| `SelectedCustomer` (type `Customer`) | `Customer.ID = ?` | business-object typed parameter → the single data-source property of that type (ambiguous → unresolved, set the path) |
 
 Each `ReportParameterFieldDefinition` row exposes **Include In Criteria** (exclude a field) and **Criteria Property Path** (override the convention). User edits **survive regeneration** — they are merged back by parameter name when you re-run Generate.
 
@@ -169,7 +169,6 @@ This catches what unit tests can't: the interplay of the XAF application model, 
 ## Known Limitations / Roadmap
 
 - WinForms is verified manually (generated parameter dialog + filtering work); there is no scripted WinForms E2E — the DevExpress WinForms grid exposes nothing via UI Automation by default, so the committed E2E runner covers Blazor only
-- Lookup (business-object) parameter generation is implemented but untested end-to-end
 - `DefaultValue` metadata is captured but not emitted as property initializers
 - No `StartXxx`/`EndXxx` date convention in the path resolver (workaround: edit the path in the grid)
 - No security/multi-tenancy considerations — this is a spike

@@ -19,6 +19,7 @@ public class OrdersReportParameters : ReportParametersObjectBase
     public string CustomerName { get; set; } = string.Empty;
     public DateTime StartDate { get; set; }
     public decimal MinAmount { get; set; }
+    public Customer? SelectedCustomer { get; set; }
 
     protected override IObjectSpace CreateObjectSpace()
     {
@@ -37,6 +38,9 @@ public class OrdersReportParameters : ReportParametersObjectBase
 
         if (MinAmount > 0m)
             criteria.Add(CriteriaOperator.Parse("Amount >= ?", MinAmount));
+
+        if (SelectedCustomer is not null)
+            criteria.Add(CriteriaOperator.Parse("Customer.ID = ?", SelectedCustomer.ID));
 
         return CriteriaOperator.And(criteria);
     }

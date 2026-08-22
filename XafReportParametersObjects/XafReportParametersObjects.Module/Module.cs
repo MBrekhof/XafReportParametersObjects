@@ -19,7 +19,7 @@ namespace XafReportParametersObjects.Module
             RequiredModuleTypes.Add(typeof(DevExpress.ExpressApp.ViewVariantsModule.ViewVariantsModule));
             AdditionalExportedTypes.Add(typeof(DevExpress.Persistent.BaseImpl.EF.FileData));
             AdditionalExportedTypes.Add(typeof(DevExpress.Persistent.BaseImpl.EF.FileAttachment));
-            AdditionalExportedTypes.Add(typeof(OrdersReportParameters));
+            // [DomainComponent] types in the module assembly are auto-collected — no AdditionalExportedTypes needed.
         }
 
         public override IEnumerable<ModuleUpdater> GetModuleUpdaters(IObjectSpace objectSpace, Version versionFromDB)

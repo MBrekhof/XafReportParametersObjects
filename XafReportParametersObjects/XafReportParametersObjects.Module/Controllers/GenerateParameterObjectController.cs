@@ -99,7 +99,7 @@ public class GenerateParameterObjectController : ViewController<DetailView>
                 field.DefaultValue = param.DefaultValue?.ToString();
                 field.IncludeInCriteria = true;
                 field.CriteriaPropertyPath =
-                    ReportParameterSourceGenerator.ResolveCriteriaPath(param.PropertyName, boType);
+                    ReportParameterSourceGenerator.ResolveCriteriaPath(param.PropertyName, boType, param.ReferencedTypeName);
 
                 if (oldSettings.TryGetValue(param.Name, out var old))
                 {

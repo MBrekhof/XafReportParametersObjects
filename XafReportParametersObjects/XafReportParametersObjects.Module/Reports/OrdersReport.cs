@@ -45,7 +45,17 @@ public class OrdersReport : XtraReport
             Visible = false
         };
 
-        Parameters.AddRange(new[] { customerNameParam, startDateParam, minAmountParam });
+        // Business-object-typed parameter: the inspector turns it into a lookup
+        // property on the generated parameters object (criteria "Customer.ID = ?").
+        var selectedCustomerParam = new Parameter
+        {
+            Name = "SelectedCustomer",
+            Description = "Selected Customer",
+            Type = typeof(Customer),
+            Visible = false
+        };
+
+        Parameters.AddRange(new[] { customerNameParam, startDateParam, minAmountParam, selectedCustomerParam });
 
         // Don't set FilterString — filtering is handled by GetCriteria() on the
         // ReportParametersObjectBase subclass, which returns a CriteriaOperator

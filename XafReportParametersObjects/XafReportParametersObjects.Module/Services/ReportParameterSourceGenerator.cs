@@ -31,7 +31,7 @@ public static class ReportParameterSourceGenerator
             {
                 criteriaPath = !string.IsNullOrWhiteSpace(field.CriteriaPropertyPath)
                     ? field.CriteriaPropertyPath
-                    : ResolveCriteriaPath(propertyName, reportDataSourceType);
+                    : ResolveCriteriaPath(propertyName, reportDataSourceType, field.ReferencedTypeName);
             }
 
             return new GeneratedField(
@@ -159,13 +159,22 @@ public static class ReportParameterSourceGenerator
         sb.AppendLine();
     }
 
-    public static string? ResolveCriteriaPath(string propertyName, Type reportDataSourceType)
+    public static string? ResolveCriteriaPath(string propertyName, Type reportDataSourceType, string? referencedTypeName = null)
     {
         if (reportDataSourceType == typeof(object)) return null;
 
         // Exact match
         var exact = FindProperty(reportDataSourceType, propertyName);
         if (exact is not null) return exact.Name;
+
+        // Lookup convention: "SelectedCustomer" (type Customer) -> the single Customer-typed property
+        // ponytail: ambiguous (two Customer properties) -> null, user sets CriteriaPropertyPath
+        if (referencedTypeName is not null)
+        {
+            var typed = reportDataSourceType.GetProperties()
+                .Where(p => p.PropertyType.FullName == referencedTypeName).ToList();
+            if (typed.Count == 1) return typed[0].Name;
+        }
 
         // Range conventions: "MinAmount"/"MaxAmount" -> "Amount"
         if (propertyName.Length > 3 &&
